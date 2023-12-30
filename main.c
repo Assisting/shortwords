@@ -17,8 +17,8 @@ struct Word;
 float wordDistanceTotal(char* word);
 
 int shortDistance(const void *a, const void *b) {
-    struct Word *first = (struct Word*)a;
-    struct Word *second = (struct Word*)b;
+    const struct Word *first = a;
+    const struct Word *second = b;
 
     if (first->distance < second->distance) {
         return -1;
@@ -30,8 +30,8 @@ int shortDistance(const void *a, const void *b) {
 }
 
 int longDistance(const void *a, const void *b) {
-    struct Word *first = (struct Word*)a;
-    struct Word *second = (struct Word*)b;
+    const struct Word *first = a;
+    const struct Word *second = b;
 
     if (first->distance > second->distance) {
         return -1;
@@ -43,8 +43,8 @@ int longDistance(const void *a, const void *b) {
 }
 
 int shortAverage(const void *a, const void *b) {
-    struct Word *first = (struct Word*)a;
-    struct Word *second = (struct Word*)b;
+    const struct Word *first = a;
+    const struct Word *second = b;
 
     if (first->avDistance < second->avDistance) {
         return -1;
@@ -56,8 +56,8 @@ int shortAverage(const void *a, const void *b) {
 }
 
 int longAverage(const void *a, const void *b) {
-    struct Word *first = (struct Word*)a;
-    struct Word *second = (struct Word*)b;
+    const struct Word *first = a;
+    const struct Word *second = b;
 
     if (first->avDistance > second->avDistance) {
         return -1;
