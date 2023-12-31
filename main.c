@@ -1,130 +1,142 @@
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #include <word.h>
 
-// The 25320 most popular words on Wiktionary (thanks to github.com/dolph)
-#define WORDLIST "popular.txt"
-#define WORDLIST_SIZE 25320
 // It's "pneumonoultramicroscopicsilicovolcanoconiosis". Apparently.
 #define LONGEST_WORD 45
 #define PRINT_TOP 5
 // Trust me bro
 #define MAGIC 25
 
-struct Word;
-float wordDistanceTotal(char* word);
+#define BUF_SIZE 65536
 
 int shortDistance(const void *a, const void *b) {
-    const struct Word *first = a;
-    const struct Word *second = b;
-
-    if (first->distance < second->distance) {
-        return -1;
-    } else if (first->distance > second->distance) {
-        return 1;
-    } else {
-        return 0;
-    }
+    const Word_t *first = a;
+    const Word_t *second = b;
+    return first->distance - second->distance;
 }
 
 int longDistance(const void *a, const void *b) {
-    const struct Word *first = a;
-    const struct Word *second = b;
-
-    if (first->distance > second->distance) {
-        return -1;
-    } else if (first->distance < second->distance) {
-        return 1;
-    } else {
-        return 0;
-    }
+    const Word_t *first = a;
+    const Word_t *second = b;
+    return second->distance - first->distance;
 }
 
 int shortAverage(const void *a, const void *b) {
-    const struct Word *first = a;
-    const struct Word *second = b;
-
-    if (first->avDistance < second->avDistance) {
-        return -1;
-    } else if (first->avDistance > second->avDistance) {
-        return 1;
-    } else {
-        return 0;
-    }
+    const Word_t *first = a;
+    const Word_t *second = b;
+    return first->avDistance - second->avDistance;
 }
 
 int longAverage(const void *a, const void *b) {
-    const struct Word *first = a;
-    const struct Word *second = b;
-
-    if (first->avDistance > second->avDistance) {
-        return -1;
-    } else if (first->avDistance < second->avDistance) {
-        return 1;
-    } else {
-        return 0;
-    }
+    const Word_t *first = a;
+    const Word_t *second = b;
+    return second->avDistance - first->avDistance;
 }
 
-int main () {
-    FILE *file = fopen(WORDLIST, "r");
+int main(int argc, char *argv[]) {
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s <file>\n", argv[0]);
+    }
+
+    FILE *file;
+
+    if (argc == 2) {
+        file = fopen(argv[1], "r");
+    } else {
+        file = fopen("popular.txt", "r");
+    }
 
     if (file == NULL) {
         perror("Cannot open word list");
-        return(-1);
+        return (-1);
     }
 
-    struct Word words[WORDLIST_SIZE] = {};
-    char str[LONGEST_WORD];
-    for (int i = 0; i < WORDLIST_SIZE; i++) {
-        fgets(str, LONGEST_WORD, file);
-        str[strcspn(str, "\n")] = 0;
+    char buf[BUF_SIZE];
+    // step 1, how many words are in the file
+    size_t wordListLen = 0;
+    while (1) {
+        size_t res = fread(buf, 1, BUF_SIZE, file);
+        if (ferror(file)) {
+            perror("Error counting lines in the file");
+        }
 
-        char *currWord = malloc(LONGEST_WORD * sizeof(char));
-        strcpy(currWord, str);
-
-        float wordDistance = wordDistanceTotal(currWord);
-        float avDistance = wordDistance / strlen(currWord);
-        
-        struct Word word = {currWord, wordDistance, avDistance};
-        words[i] = word;
+        for (size_t i = 0; i < res; i++) {
+            if ('\n' == buf[i]) {
+                wordListLen++;
+            }
+        }
+        if (feof(file))
+            break;
     }
 
+    // return the pointer to the beginning of the file
+    fseek(file, 0, SEEK_SET);
+
+    char *word = NULL;
+    Word_t *words = malloc(wordListLen * sizeof(Word_t));
+    size_t len = 0;
+    size_t i = 0;
+    ssize_t wordLen = -1;
+    // read in the file line by line
+    while ((wordLen = getline(&word, &len, file)) >= 0) {
+        // getline leaves the CRLF in the word, this is a hack to remove them
+        word[wordLen - 2] = 0;
+        // getline creates a pointer to the word for use
+        words[i].text = word;
+        words[i].distance = wordDistanceTotal(word);
+        words[i].avDistance = words[i].distance / wordLen - 2;
+
+        i++;
+        // reset the word pointer to NULL so the getline will malloc another
+        // buffer for us
+        word = NULL;
+        len = 0;
+    }
     fclose(file);
 
-    qsort(words, WORDLIST_SIZE, sizeof(struct Word), shortDistance);
+    qsort(words, wordListLen, sizeof(Word_t), shortDistance);
     printf("Shortest total distance:\n");
-    printf("    Word                        Total Travel\tAverage Travel\n");
+    printf("    %-20s\t%s\t%s\n", "Word", "Total Travel", "Average Travel");
     for (int i = 0; i < PRINT_TOP; i++) {
-        printf("%2d. %-20s\t%f\t%f\n", i+1, words[i].text, words[i].distance, words[i].avDistance);
+        printf("%2d. %-20s\t%f\t%f\n", i + 1, words[i].text, words[i].distance,
+               words[i].avDistance);
     }
     printf("\n");
 
-    qsort(words, WORDLIST_SIZE, sizeof(struct Word), longDistance);
+    qsort(words, wordListLen, sizeof(Word_t), longDistance);
     printf("Longest total distance:\n");
-    printf("    Word                        Total Travel\tAverage Travel\n");
+    printf("    %-20s\t%s\t%s\n", "Word", "Total Travel", "Average Travel");
     for (int i = 0; i < PRINT_TOP; i++) {
-        printf("%2d. %-20s\t%f\t%f\n", i+1, words[i].text, words[i].distance, words[i].avDistance);
+        printf("%2d. %-20s\t%f\t%f\n", i + 1, words[i].text, words[i].distance,
+               words[i].avDistance);
     }
     printf("\n");
 
-    qsort(words, WORDLIST_SIZE, sizeof(struct Word), shortAverage);
+    qsort(words, wordListLen, sizeof(Word_t), shortAverage);
     printf("Shortest average distance:\n");
-    printf("    Word                        Total Travel\tAverage Travel\n");
+    printf("    %-20s\t%s\t%s\n", "Word", "Total Travel", "Average Travel");
     for (int i = 0; i < PRINT_TOP; i++) {
-        printf("%2d. %-20s\t%f\t%f\n", i+1, words[i].text, words[i].distance, words[i].avDistance);
+        printf("%2d. %-20s\t%f\t%f\n", i + 1, words[i].text, words[i].distance,
+               words[i].avDistance);
     }
     printf("\n");
 
-    qsort(words, WORDLIST_SIZE, sizeof(struct Word), longAverage);
+    qsort(words, wordListLen, sizeof(Word_t), longAverage);
     printf("Longest average distance:\n");
-    printf("    Word                        Total Travel\tAverage Travel\n");
+    printf("    %-20s\t%s\t%s\n", "Word", "Total Travel", "Average Travel");
     for (int i = 0; i < PRINT_TOP; i++) {
-        printf("%2d. %-20s\t%f\t%f\n", i+1, words[i].text, words[i].distance, words[i].avDistance);
+        printf("%2d. %-20s\t%f\t%f\n", i + 1, words[i].text, words[i].distance,
+               words[i].avDistance);
     }
     printf("\n");
 
-    return(0);
+    for (size_t i = 0; i < wordListLen; i++) {
+        free(&words[i]);
+    }
+    free(words);
+
+    return (0);
 }
