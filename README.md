@@ -10,6 +10,6 @@ Uses, by default, the `popular.txt` wordlist from [dolph/dictionary](https://git
 
 This will create the executable, which you can then run. Note that the `popular.txt` wordlist provided has been altered from [the original version](https://github.com/dolph/dictionary/blob/master/popular.txt) by removing the trivial `aa` and `mm` entries.
 
-Alternatively, you may edit the file the program will read from by changing the defines in the `main.c` file. You will need to modify the size define as well.
+You may specify a wordlist of your own choosing by calling `.\shortwords <file>`. Note that words must be separated by the `\r\n` characters.
 
 To clean up, run: `make clean`
